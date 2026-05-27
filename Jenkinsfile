@@ -25,8 +25,6 @@ pipeline {
             parallel {
 
                 stage('Running Application') {
-                    agent any
-
                     steps {
                         script {
                             timeout(time: 60, unit: 'SECONDS') {
