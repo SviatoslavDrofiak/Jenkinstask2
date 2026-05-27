@@ -31,7 +31,7 @@ pipeline {
                                 try {
                                     dir("target") {
                                         echo "Starting application on port ${APP_PORT}"
-                                        bat "java -jar contact.war --server.port=9091
+                                        bat "java -jar contact.war --server.port=9091"
                                     }
                                 } catch (err) {
                                     echo "Application stopped (timeout or error) -> CONTINUE PIPELINE"
