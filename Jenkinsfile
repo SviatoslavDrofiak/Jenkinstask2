@@ -16,6 +16,7 @@ pipeline {
         stage('Build') {
             steps {
                 bat 'mvn clean package -DskipTests'
+                archiveArtifacts artifacts: 'target/*.war', fingerprint: true
             }
         }
 
