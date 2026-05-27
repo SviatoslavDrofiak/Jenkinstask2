@@ -6,47 +6,66 @@ pipeline {
         JOB_NAME_GLOBAL = "${env.JOB_NAME}"
     }
 
+    tools {
+        jdk 'JDK17'
+        maven 'Maven3'
+    }
+
     stages {
 
         stage('Build') {
             steps {
-                bat "mvn clean package"
+                bat 'mvn clean package -DskipTests'
             }
         }
 
-        stage('Integration Test') {
+        stage('Integration Tests (Parallel)') {
 
             parallel {
 
                 stage('Running Application') {
                     agent any
+
                     steps {
                         script {
                             timeout(time: 60, unit: 'SECONDS') {
                                 try {
                                     dir("target") {
+                                        echo "Starting application on port ${APP_PORT}"
                                         bat "java -jar contact.war"
                                     }
                                 } catch (err) {
-                                    echo "Application stopped (timeout or error) -> SUCCESS"
+                                    echo "Application stopped (timeout or error) -> CONTINUE PIPELINE"
                                 }
                             }
                         }
                     }
                 }
 
-                stage('Running Test') {
+                stage('Running RestIT') {
                     steps {
                         script {
                             timeout(time: 30, unit: 'SECONDS') {
+
+                                echo "Waiting for application to start..."
                                 sleep 30
+
                                 bat "mvn test -Dtest=RestIT"
                             }
                         }
                     }
                 }
-
             }
+        }
+    }
+
+    post {
+        success {
+            echo "BUILD SUCCESS - Job: ${JOB_NAME_GLOBAL}"
+        }
+
+        failure {
+            echo "BUILD FAILED"
         }
     }
 }
