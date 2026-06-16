@@ -1,4 +1,5 @@
 name: Check Jenkins pipeline
+
 on:
   push:
     branches:
@@ -10,30 +11,39 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Generate a token
-        id: generate-token
-        uses: actions/create-github-app-token@v2
-        with:
-          app-id: ${{ secrets.APP_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
-      - name: Checks-out your repository
+      - name: Checkout repository
         uses: actions/checkout@v6
+
       - name: Run Jenkinsfile
-        id: run_jenkinsfile
         run: |
           mvn_output=$(mvn --version)
           MAVEN_HOME=$(echo "$mvn_output" | grep 'Maven home:' | awk '{print $3}')
-          docker run --rm -v $(pwd):/workspace -v $MAVEN_HOME:/mvn -v /local/jenkinsHome:/jenkinsHome \
-              -e PATH=$PATH:/opt/java/openjdk/jre/bin:/mvn/bin -e MAVEN_HOME=/mvn \
-              jenkins/jenkinsfile-runner --runHome /jenkinsHome    
+
+          docker run --rm \
+            -v $(pwd):/workspace \
+            -v $MAVEN_HOME:/mvn \
+            -v /local/jenkinsHome:/jenkinsHome \
+            -e PATH=$PATH:/opt/java/openjdk/jre/bin:/mvn/bin \
+            -e MAVEN_HOME=/mvn \
+            jenkins/jenkinsfile-runner \
+            --runHome /jenkinsHome
+
       - name: Check Test Running
-        run: 'if ! grep -q "Running com.softserve.verify.RestIT" /local/jenkinsHome/jobs/job/builds/1/log;  then exit 1; fi'
-      - name: Check Test Running
-        run: 'if grep -q "FAILURE" /local/jenkinsHome/jobs/job/builds/1/log;  then exit 1; fi'
-      - name: Check Test Result
-        run: 'if grep -q "Tests run: 1, Failures: 0, Errors: 0, Skipped: 0" /local/jenkinsHome/jobs/job/builds/1/log;  then exit 0; else exit 1; fi'
-      - name: Final Step
-        env:
-          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
         run: |
-          gh repo edit $GITHUB_REPOSITORY --visibility private --accept-visibility-change-consequences
+          if ! grep -q "Running com.softserve.verify.RestIT" /local/jenkinsHome/jobs/job/builds/1/log; then
+            exit 1
+          fi
+
+      - name: Check Test Failure
+        run: |
+          if grep -q "FAILURE" /local/jenkinsHome/jobs/job/builds/1/log; then
+            exit 1
+          fi
+
+      - name: Check Test Result
+        run: |
+          if grep -q "Tests run: 1, Failures: 0, Errors: 0, Skipped: 0" /local/jenkinsHome/jobs/job/builds/1/log; then
+            exit 0
+          else
+            exit 1
+          fi
