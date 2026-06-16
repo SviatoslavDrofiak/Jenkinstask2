@@ -23,17 +23,14 @@ pipeline {
             parallel {
 
                 stage('Running Application') {
-                    agent any
-
                     steps {
                         script {
                             try {
                                 timeout(time: 60, unit: 'SECONDS') {
-
                                     dir('target') {
-                                        sh 'java -jar contact.war --server.port=$APP_PORT'
+                                        sh 'ls -l'
+                                        sh 'java -jar contact.war --server.port=9090'
                                     }
-
                                 }
                             } catch (Exception e) {
                                 echo 'Application stopped after timeout'
@@ -44,8 +41,7 @@ pipeline {
 
                 stage('Running Test') {
                     steps {
-                        sleep 30
-
+                        sleep(time: 30, unit: 'SECONDS')
                         sh 'mvn test -Dtest=RestIT'
                     }
                 }
@@ -54,11 +50,8 @@ pipeline {
     }
 
     post {
-        success {
-            echo "BUILD SUCCESS - ${JOB_NAME_GLOBAL}"
-        }
-        failure {
-            echo "BUILD FAILED"
+        always {
+            echo "Pipeline finished. Job: ${JOB_NAME_GLOBAL}"
         }
     }
 }
