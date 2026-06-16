@@ -15,43 +15,38 @@ pipeline {
 
         stage('Build') {
             steps {
-                bat 'mvn clean package -DskipTests'
-                archiveArtifacts artifacts: 'target/*.war', fingerprint: true
+                sh 'mvn clean package -DskipTests'
             }
         }
 
-        stage('Integration Tests (Parallel)') {
-
+        stage('Integration Test') {
             parallel {
 
                 stage('Running Application') {
+                    agent any
+
                     steps {
                         script {
-                            timeout(time: 60, unit: 'SECONDS') {
-                                try {
-                                    dir("target") {
-                                        echo "Starting application on port ${APP_PORT}"
-                                        bat "java -jar contact.war --server.port=9091"
+                            try {
+                                timeout(time: 60, unit: 'SECONDS') {
+
+                                    dir('target') {
+                                        sh 'java -jar contact.war --server.port=$APP_PORT'
                                     }
-                                } catch (err) {
-                                    echo "Application stopped (timeout or error) -> CONTINUE PIPELINE"
+
                                 }
+                            } catch (Exception e) {
+                                echo 'Application stopped after timeout'
                             }
                         }
                     }
                 }
 
-                stage('Running RestIT') {
+                stage('Running Test') {
                     steps {
-                        script {
-                            timeout(time: 30, unit: 'SECONDS') {
+                        sleep 30
 
-                                echo "Waiting for application to start..."
-                                sleep 30
-
-                                bat "mvn test -Dtest=RestIT"
-                            }
-                        }
+                        sh 'mvn test -Dtest=RestIT'
                     }
                 }
             }
@@ -60,9 +55,8 @@ pipeline {
 
     post {
         success {
-            echo "BUILD SUCCESS - Job: ${JOB_NAME_GLOBAL}"
+            echo "BUILD SUCCESS - ${JOB_NAME_GLOBAL}"
         }
-
         failure {
             echo "BUILD FAILED"
         }
