@@ -1,57 +1,61 @@
 pipeline {
-    agent any
+agent any
 
-    environment {
-        APP_PORT = '9090'
-        JOB_NAME_GLOBAL = "${env.JOB_NAME}"
-    }
+environment {
+    APP_PORT = '9090'
+    JOB_NAME_GLOBAL = "${env.JOB_NAME}"
+}
 
-    tools {
-        jdk 'JDK17'
-        maven 'Maven-3'
-    }
+stages {
 
-    stages {
-
-        stage('Build') {
-            steps {
-                sh 'mvn clean package -DskipTests'
-            }
+    stage('Build') {
+        steps {
+            sh 'java -version'
+            sh 'mvn -version'
+            sh 'mvn clean package -DskipTests'
         }
+    }
 
-        stage('Integration Test') {
-            parallel {
+    stage('Unit Tests') {
+        steps {
+            sh 'mvn test'
+        }
+    }
 
-                stage('Running Application') {
-                    steps {
-                        script {
-                            try {
-                                timeout(time: 60, unit: 'SECONDS') {
-                                    dir('target') {
-                                        sh 'ls -l'
-                                        sh 'java -jar contact.war --server.port=9090'
-                                    }
+    stage('Integration Test') {
+        parallel {
+
+            stage('Run Application') {
+                steps {
+                    script {
+                        try {
+                            timeout(time: 60, unit: 'SECONDS') {
+                                dir('target') {
+                                    sh 'ls -la'
+                                    sh 'java -jar contact.war --server.port=${APP_PORT}'
                                 }
-                            } catch (Exception e) {
-                                echo 'Application stopped after timeout'
                             }
+                        } catch (Exception e) {
+                            echo 'Application stopped after timeout'
                         }
                     }
                 }
+            }
 
-                stage('Running Test') {
-                    steps {
-                        sleep(time: 30, unit: 'SECONDS')
-                        sh 'mvn test -Dtest=RestIT'
-                    }
+            stage('Run RestIT') {
+                steps {
+                    sleep(time: 30, unit: 'SECONDS')
+                    sh 'mvn test -Dtest=RestIT'
                 }
             }
         }
     }
+}
 
-    post {
-        always {
-            echo "Pipeline finished. Job: ${JOB_NAME_GLOBAL}"
-        }
+post {
+    always {
+        echo "Job name: ${JOB_NAME_GLOBAL}"
     }
+}
+
 }
